@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quebec Home Finance - Dual Mode</title>
+    <title>Quebec Home Finance - Professional Suite</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -95,14 +97,12 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            transition: 0.2s;
         }
         .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
-        .chip .del-btn { font-size: 1.1rem; line-height: 1; opacity: 0.6; }
-        .chip .del-btn:hover { color: #ef4444; opacity: 1; }
+        .chip .del-btn { font-size: 1.1rem; opacity: 0.6; cursor: pointer; }
 
         .save-group { display: flex; gap: 5px; margin-left: auto; }
-        .save-input { padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.85rem; }
+        .save-input { padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1; }
         .btn-save { background: var(--success); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; }
 
         h1, h2 { margin: 0; font-size: 1.6rem; letter-spacing: -0.5px; }
@@ -116,19 +116,23 @@
             width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem;
             box-sizing: border-box; background: #fcfcfd;
         }
-        input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
 
         .results-box { background: #1e293b; color: white; position: sticky; top: 20px; border: none; }
         .big-number { font-size: 2.8rem; font-weight: 800; color: #60a5fa; margin: 5px 0; }
-        .result-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .total-row { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin: 15px 0; border: 1px solid rgba(96, 165, 250, 0.3); }
+        .limit-indicator { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-top: -5px; margin-bottom: 15px; font-weight: 700; }
+        .result-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
+        
+        /* Formula Styling */
+        .formula-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 0.85rem; margin-top: 15px; }
+        .formula-item { background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid var(--border); }
+        .formula-title { font-weight: 700; color: var(--primary); margin-bottom: 8px; display: block; }
+        .welcome-tax-table { width: 100%; font-size: 0.8rem; border-spacing: 0; margin-top: 10px; }
+        .welcome-tax-table td { padding: 4px 0; border-bottom: 1px solid #e2e8f0; }
 
         .table-container { overflow-x: auto; margin-top: 15px; border-radius: 12px; border: 1px solid var(--border); }
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
-        th { background: #f8fafc; padding: 12px; font-weight: 600; border-bottom: 2px solid var(--border); }
+        th { background: #f8fafc; padding: 12px; border-bottom: 2px solid var(--border); }
         td { padding: 12px; border-bottom: 1px solid var(--border); }
-        
-        .quebec-flag { background: #eff6ff; color: #1e40af; padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; margin-bottom: 10px; display: inline-block; }
     </style>
 </head>
 <body>
@@ -146,11 +150,9 @@
 
 <div class="container">
     <div class="card">
-        <div class="quebec-flag">QUEBEC REGULATORY STANDARDS 2026</div>
-        
         <div class="mode-selector">
-            <button id="modeMax" class="mode-btn active" onclick="setMode('max')">How much can I afford?</button>
-            <button id="modeSpecific" class="mode-btn" onclick="setMode('specific')">Analyze Specific Property</button>
+            <button id="modeMax" class="mode-btn active" onclick="setMode('max')">Max Affordability</button>
+            <button id="modeSpecific" class="mode-btn" onclick="setMode('specific')">Specific Property</button>
         </div>
 
         <div class="section-title">Financials</div>
@@ -184,44 +186,68 @@
                     <option value="30">30 Years</option>
                     <option value="25" selected>25 Years</option>
                     <option value="20">20 Years</option>
-                    <option value="18">18 Years</option>
                     <option value="15">15 Years</option>
                     <option value="10">10 Years</option>
-                    <option value="5">5 Years</option>
                 </select>
             </div>
-            <div class="input-group" id="debtWrapper">
+            <div class="input-group">
                 <label>Monthly Debts ($/mo)</label>
-                <input type="number" id="loans" class="calc-trigger" placeholder="Car/Loans" oninput="calculate()">
+                <input type="number" id="loans" class="calc-trigger" placeholder="Car/Credit Cards" oninput="calculate()">
             </div>
         </div>
     </div>
 
     <div class="card results-box">
-        <h2 id="resultHeading">Estimated Price</h2>
+        <h2 id="resultHeading">Max Purchase</h2>
         <div class="big-number" id="mainResultDisplay">$0</div>
+        <div id="limitText" class="limit-indicator"></div>
         
-        <div class="total-row">
-            <div class="result-item" style="border: none; margin-bottom: 0;">
-                <span style="font-weight: 600;">Total Monthly Cash Out:</span>
-                <span id="monthlyPayment" style="color: #60a5fa; font-weight: 800; font-size: 1.1rem;">$0</span>
-            </div>
-        </div>
-
-        <div class="result-item"><span>Mortgage Payment (P+I):</span><span id="piOnly">$0</span></div>
-        <div class="result-item"><span>CMHC Insurance Fee:</span><span id="cmhcFee">$0</span></div>
-        <div class="result-item"><span>Total Interest (Life of Loan):</span><span id="totalInterest" style="color:#fbbf24;">$0</span></div>
-        <div class="result-item"><span>Welcome Tax (One-time):</span><span id="welcomeTax">$0</span></div>
+        <div class="result-item"><span>Monthly Cash Out:</span><span id="monthlyPayment" style="color: #60a5fa; font-weight: 800;">$0</span></div>
+        <div class="result-item"><span>Mortgage P+I:</span><span id="piOnly">$0</span></div>
+        <div class="result-item"><span>CMHC Insurance:</span><span id="cmhcFee">$0</span></div>
+        <div class="result-item"><span>Total Interest:</span><span id="totalInterest" style="color:#fbbf24;">$0</span></div>
+        <div class="result-item"><span>Welcome Tax (QC):</span><span id="welcomeTax">$0</span></div>
     </div>
 </div>
 
 <div class="container" style="display: block;">
     <div class="card">
+        <h2>Financial Logic & Formulas</h2>
+        <div class="formula-grid">
+            <div class="formula-item">
+                <span class="formula-title">GDS Ratio (Housing Limit)</span>
+                Max 32% of gross income for housing.
+                $$GDS = \frac{Mortgage + Tax + Heat + (0.5 \times Condo)}{Monthly Income}$$
+            </div>
+            <div class="formula-item">
+                <span class="formula-title">TDS Ratio (Debt Limit)</span>
+                Max 40% of gross income for all debt.
+                $$TDS = \frac{Housing Costs + Personal Debt}{Monthly Income}$$
+            </div>
+            <div class="formula-item">
+                <span class="formula-title">The Stress Test Rate</span>
+                Qualifying rate used for calculations.
+                $$i_{stress} = \max(\text{Rate} + 2\%, 5.25\%)$$
+            </div>
+            <div class="formula-item">
+                <span class="formula-title">Quebec Welcome Tax (2026)</span>
+                Standard Provincial Brackets:
+                <table class="welcome-tax-table">
+                    <tr><td>First $62,900</td><td>0.5%</td></tr>
+                    <tr><td>$62,901 - $315,000</td><td>1.0%</td></tr>
+                    <tr><td>$315,001 - $500,000</td><td>1.5%</td></tr>
+                    <tr><td>Above $500,000</td><td>3.0%</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
         <h2>Amortization Schedule</h2>
         <div class="table-container">
             <table>
                 <thead>
-                    <tr><th>Year</th><th>Principal Paid</th><th>Interest Paid</th><th>Remaining Balance</th></tr>
+                    <tr><th>Year</th><th>Principal</th><th>Interest</th><th>Remaining Balance</th></tr>
                 </thead>
                 <tbody id="amortizationTableBody"></tbody>
             </table>
@@ -230,69 +256,16 @@
 </div>
 
 <script>
-let currentScenarioId = null;
 let currentMode = 'max';
 
 function setMode(mode) {
     currentMode = mode;
     document.getElementById('modeMax').classList.toggle('active', mode === 'max');
     document.getElementById('modeSpecific').classList.toggle('active', mode === 'specific');
-    
     document.getElementById('incomeWrapper').style.display = mode === 'max' ? 'block' : 'none';
     document.getElementById('priceWrapper').style.display = mode === 'specific' ? 'block' : 'none';
-    document.getElementById('debtWrapper').style.display = mode === 'max' ? 'block' : 'block'; 
-    
     document.getElementById('resultHeading').innerText = mode === 'max' ? 'Max Purchase' : 'Purchase Price';
     calculate();
-}
-
-function getScenarios() { return JSON.parse(localStorage.getItem('qcScenarios') || '{}'); }
-
-function saveScenario() {
-    const name = document.getElementById('scenarioName').value.trim();
-    if (!name) return;
-    const scenarios = getScenarios();
-    const data = { mode: currentMode };
-    document.querySelectorAll('.calc-trigger').forEach(input => data[input.id] = input.value);
-    scenarios[name] = data;
-    localStorage.setItem('qcScenarios', JSON.stringify(scenarios));
-    document.getElementById('scenarioName').value = "";
-    currentScenarioId = name;
-    renderScenarios();
-}
-
-function loadScenario(name) {
-    const scenarios = getScenarios();
-    const data = scenarios[name];
-    if (data) {
-        if (data.mode) setMode(data.mode);
-        Object.keys(data).forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.value = data[id];
-        });
-        currentScenarioId = name;
-        renderScenarios();
-        calculate();
-    }
-}
-
-function deleteScenario(e, name) {
-    e.stopPropagation();
-    const scenarios = getScenarios();
-    delete scenarios[name];
-    localStorage.setItem('qcScenarios', JSON.stringify(scenarios));
-    if (currentScenarioId === name) currentScenarioId = null;
-    renderScenarios();
-}
-
-function renderScenarios() {
-    const list = document.getElementById('scenarioList');
-    const scenarios = getScenarios();
-    list.innerHTML = "";
-    Object.keys(scenarios).forEach(name => {
-        const activeClass = name === currentScenarioId ? 'active' : '';
-        list.innerHTML += `<div class="chip ${activeClass}" onclick="loadScenario('${name}')">${name}<span class="del-btn" onclick="deleteScenario(event, '${name}')">&times;</span></div>`;
-    });
 }
 
 function calculate() {
@@ -315,7 +288,12 @@ function calculate() {
 
     if (currentMode === 'max') {
         const housingFixed = (annualTax / 12) + monthlyHeat + (monthlyCondo * 0.5);
-        const maxPI = Math.min((income * 0.32 / 12) - housingFixed, (income * 0.40 / 12) - housingFixed - debts);
+        const gdsLimit = (income * 0.32 / 12) - housingFixed;
+        const tdsLimit = (income * 0.40 / 12) - housingFixed - debts;
+        
+        const maxPI = Math.min(gdsLimit, tdsLimit);
+        document.getElementById('limitText').innerText = gdsLimit < tdsLimit ? "Limited by Income (GDS Rule)" : "Limited by Debt (TDS Rule)";
+
         let maxLoan = maxPI > 0 ? maxPI * ((1 - Math.pow(1 + rStress, -n)) / rStress) : 0;
         let estPrice = maxLoan + downPayment;
         let dpPct = estPrice > 0 ? (downPayment / estPrice) * 100 : 0;
@@ -325,6 +303,7 @@ function calculate() {
         cmhcTotal = netLoan * cmhcRate;
         totalMortgage = netLoan + cmhcTotal;
     } else {
+        document.getElementById('limitText').innerText = "";
         finalPrice = priceInput;
         const netLoan = Math.max(0, finalPrice - downPayment);
         let dpPct = finalPrice > 0 ? (downPayment / finalPrice) * 100 : 0;
@@ -367,6 +346,31 @@ function generateTable(principal, annualRate, years, monthlyPI) {
         body.insertAdjacentHTML('beforeend', `<tr><td>${y}</td><td>${fmt.format(yPri)}</td><td>${fmt.format(yInt)}</td><td>${fmt.format(Math.max(0, bal))}</td></tr>`);
     }
     interestEl.innerText = fmt.format(totalInt);
+}
+
+// Reuse scenario logic from previous version
+function getScenarios() { return JSON.parse(localStorage.getItem('qcScenarios') || '{}'); }
+function renderScenarios() {
+    const list = document.getElementById('scenarioList');
+    const scenarios = getScenarios();
+    list.innerHTML = "";
+    Object.keys(scenarios).forEach(name => {
+        list.innerHTML += `<div class="chip" onclick="loadScenario('${name}')">${name}</div>`;
+    });
+}
+function saveScenario() {
+    const name = document.getElementById('scenarioName').value;
+    const scenarios = getScenarios();
+    const data = {};
+    document.querySelectorAll('.calc-trigger').forEach(input => data[input.id] = input.value);
+    scenarios[name] = data;
+    localStorage.setItem('qcScenarios', JSON.stringify(scenarios));
+    renderScenarios();
+}
+function loadScenario(name) {
+    const data = getScenarios()[name];
+    Object.keys(data).forEach(id => document.getElementById(id).value = data[id]);
+    calculate();
 }
 
 renderScenarios();
