@@ -104,6 +104,7 @@
         .save-group { display: flex; gap: 5px; margin-left: auto; }
         .save-input { padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1; }
         .btn-save { background: var(--success); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .btn-clear-all { background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; }
 
         h1, h2 { margin: 0; font-size: 1.6rem; letter-spacing: -0.5px; }
         .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.2px; color: #94a3b8; margin: 20px 0 10px 0; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
@@ -133,9 +134,54 @@
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
         th { background: #f8fafc; padding: 12px; border-bottom: 2px solid var(--border); }
         td { padding: 12px; border-bottom: 1px solid var(--border); }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 0;
+            padding: 0;
+        }
+
+        .page-header h1 {
+            font-size: 1.3rem;
+            margin: 0;
+            color: var(--primary);
+            font-weight: 800;
+            letter-spacing: -1px;
+            line-height: 1;
+        }
+
+        .page-header p {
+            font-size: 0.65rem;
+            color: #64748b;
+            margin: 0;
+            line-height: 1;
+        }
+
+        .toggle-btn {
+            background: none;
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            padding: 0;
+            margin-left: 10px;
+        }
+
+        .collapsible-content {
+            display: none;
+        }
+
+        .collapsible-content.open {
+            display: block;
+        }
     </style>
 </head>
 <body>
+
+<div class="page-header">
+    <h3>Quebec Home Finance</h3>
+</div>
 
 <div class="container" style="display: block; margin-bottom: 0;">
     <div class="scenario-bar">
@@ -144,6 +190,7 @@
         <div class="save-group">
             <input type="text" id="scenarioName" class="save-input" placeholder="Scenario name...">
             <button class="btn-save" onclick="saveScenario()">Save</button>
+            <button class="btn-clear-all" onclick="clearAllScenarios()">Clear All</button>
         </div>
     </div>
 </div>
@@ -212,32 +259,37 @@
 
 <div class="container" style="display: block;">
     <div class="card">
-        <h2>Financial Logic & Formulas</h2>
-        <div class="formula-grid">
-            <div class="formula-item">
-                <span class="formula-title">GDS Ratio (Housing Limit)</span>
-                Max 32% of gross income for housing.
-                $$GDS = \frac{Mortgage + Tax + Heat + (0.5 \times Condo)}{Monthly Income}$$
-            </div>
-            <div class="formula-item">
-                <span class="formula-title">TDS Ratio (Debt Limit)</span>
-                Max 40% of gross income for all debt.
-                $$TDS = \frac{Housing Costs + Personal Debt}{Monthly Income}$$
-            </div>
-            <div class="formula-item">
-                <span class="formula-title">The Stress Test Rate</span>
-                Qualifying rate used for calculations.
-                $$i_{stress} = \max(\text{Rate} + 2\%, 5.25\%)$$
-            </div>
-            <div class="formula-item">
-                <span class="formula-title">Quebec Welcome Tax (2026)</span>
-                Standard Provincial Brackets:
-                <table class="welcome-tax-table">
-                    <tr><td>First $62,900</td><td>0.5%</td></tr>
-                    <tr><td>$62,901 - $315,000</td><td>1.0%</td></tr>
-                    <tr><td>$315,001 - $500,000</td><td>1.5%</td></tr>
-                    <tr><td>Above $500,000</td><td>3.0%</td></tr>
-                </table>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <h2 style="margin: 0;">Financial Logic & Formulas</h2>
+            <button class="toggle-btn" onclick="toggleFormulas()">▼</button>
+        </div>
+        <div id="formulasContent" class="collapsible-content">
+            <div class="formula-grid">
+                <div class="formula-item">
+                    <span class="formula-title">GDS Ratio (Housing Limit)</span>
+                    Max 32% of gross income for housing.
+                    $$GDS = \frac{Mortgage + Tax + Heat + (0.5 \times Condo)}{Monthly Income}$$
+                </div>
+                <div class="formula-item">
+                    <span class="formula-title">TDS Ratio (Debt Limit)</span>
+                    Max 40% of gross income for all debt.
+                    $$TDS = \frac{Housing Costs + Personal Debt}{Monthly Income}$$
+                </div>
+                <div class="formula-item">
+                    <span class="formula-title">The Stress Test Rate</span>
+                    Qualifying rate used for calculations.
+                    $$i_{stress} = \max(\text{Rate} + 2\%, 5.25\%)$$
+                </div>
+                <div class="formula-item">
+                    <span class="formula-title">Quebec Welcome Tax (2026)</span>
+                    Standard Provincial Brackets:
+                    <table class="welcome-tax-table">
+                        <tr><td>First $62,900</td><td>0.5%</td></tr>
+                        <tr><td>$62,901 - $315,000</td><td>1.0%</td></tr>
+                        <tr><td>$315,001 - $500,000</td><td>1.5%</td></tr>
+                        <tr><td>Above $500,000</td><td>3.0%</td></tr>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -355,22 +407,47 @@ function renderScenarios() {
     const scenarios = getScenarios();
     list.innerHTML = "";
     Object.keys(scenarios).forEach(name => {
-        list.innerHTML += `<div class="chip" onclick="loadScenario('${name}')">${name}</div>`;
+        list.innerHTML += `<div class="chip"><span onclick="loadScenario('${name.replace(/'/g, "\\'")}')" style="cursor: pointer;">${name}</span><span class="del-btn" onclick="deleteScenario('${name.replace(/'/g, "\\'")}')">&times;</span></div>`;
     });
 }
 function saveScenario() {
     const name = document.getElementById('scenarioName').value;
+    if (!name.trim()) { alert('Please enter a scenario name'); return; }
     const scenarios = getScenarios();
     const data = {};
     document.querySelectorAll('.calc-trigger').forEach(input => data[input.id] = input.value);
     scenarios[name] = data;
     localStorage.setItem('qcScenarios', JSON.stringify(scenarios));
+    document.getElementById('scenarioName').value = '';
     renderScenarios();
 }
 function loadScenario(name) {
     const data = getScenarios()[name];
-    Object.keys(data).forEach(id => document.getElementById(id).value = data[id]);
-    calculate();
+    if (data) {
+        Object.keys(data).forEach(id => document.getElementById(id).value = data[id]);
+        calculate();
+    }
+}
+function deleteScenario(name) {
+    if (confirm(`Delete scenario "${name}"?`)) {
+        const scenarios = getScenarios();
+        delete scenarios[name];
+        localStorage.setItem('qcScenarios', JSON.stringify(scenarios));
+        renderScenarios();
+    }
+}
+function clearAllScenarios() {
+    if (confirm('Delete ALL saved scenarios? This cannot be undone.')) {
+        localStorage.removeItem('qcScenarios');
+        renderScenarios();
+    }
+}
+
+function toggleFormulas() {
+    const content = document.getElementById('formulasContent');
+    const button = event.target;
+    content.classList.toggle('open');
+    button.innerText = content.classList.contains('open') ? '▲' : '▼';
 }
 
 renderScenarios();
