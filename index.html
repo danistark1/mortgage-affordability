@@ -123,7 +123,6 @@
         .limit-indicator { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-top: -5px; margin-bottom: 15px; font-weight: 700; }
         .result-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
         
-        /* Formula Styling */
         .formula-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 0.85rem; margin-top: 15px; }
         .formula-item { background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid var(--border); }
         .formula-title { font-weight: 700; color: var(--primary); margin-bottom: 8px; display: block; }
@@ -141,20 +140,14 @@
             padding: 0;
         }
 
-        .page-header h1 {
+        .page-header h3 {
             font-size: 1.3rem;
             margin: 0;
             color: var(--primary);
             font-weight: 800;
             letter-spacing: -1px;
             line-height: 1;
-        }
-
-        .page-header p {
-            font-size: 0.65rem;
-            color: #64748b;
-            margin: 0;
-            line-height: 1;
+            padding: 20px 0;
         }
 
         .toggle-btn {
@@ -180,7 +173,7 @@
 <body>
 
 <div class="page-header">
-    <h3>Quebec Home Finance</h3>
+    <h3>Quebec Home Finance - Professional Suite</h3>
 </div>
 
 <div class="container" style="display: block; margin-bottom: 0;">
@@ -205,7 +198,7 @@
         <div class="section-title">Financials</div>
         <div class="input-grid">
             <div id="incomeWrapper" class="input-group">
-                <label>Gross Annual Income ($)</label>
+                <label>Gross Annual Income ($) <small>(Incl. 2-yr bonus avg)</small></label>
                 <input type="number" id="income" class="calc-trigger" placeholder="0" oninput="calculate()">
             </div>
             <div id="priceWrapper" class="input-group" style="display: none;">
@@ -220,21 +213,20 @@
 
         <div class="section-title">Property Costs & Amortization</div>
         <div class="input-grid">
-            <div class="input-group"><label>Property Tax ($/yr)</label><input type="number" id="propTax" class="calc-trigger" placeholder="0" oninput="calculate()"></div>
+            <div class="input-group"><label>Property + School Tax ($/yr)</label><input type="number" id="propTax" class="calc-trigger" placeholder="0" oninput="calculate()"></div>
             <div class="input-group"><label>Hydro/Heat ($/mo)</label><input type="number" id="heating" class="calc-trigger" placeholder="0" oninput="calculate()"></div>
             <div class="input-group"><label>Condo Fees ($/mo)</label><input type="number" id="condo" class="calc-trigger" placeholder="0" oninput="calculate()"></div>
-            <div class="input-group"><label>Interest Rate (%)</label><input type="number" id="rate" class="calc-trigger" value="4.50" step="0.01" oninput="calculate()"></div>
+            <div class="input-group"><label>Interest Rate (%)</label><input type="number" id="rate" class="calc-trigger" value="4.19" step="0.01" oninput="calculate()"></div>
         </div>
 
         <div class="input-grid">
             <div class="input-group">
                 <label>Amortization</label>
                 <select id="amortization" class="calc-trigger" onchange="calculate()">
-                    <option value="30">30 Years</option>
+                    <option value="30">30 Years (Min 20% DP)</option>
                     <option value="25" selected>25 Years</option>
                     <option value="20">20 Years</option>
                     <option value="15">15 Years</option>
-                    <option value="10">10 Years</option>
                 </select>
             </div>
             <div class="input-group">
@@ -253,26 +245,26 @@
         <div class="result-item"><span>Mortgage P+I:</span><span id="piOnly">$0</span></div>
         <div class="result-item"><span>CMHC Insurance:</span><span id="cmhcFee">$0</span></div>
         <div class="result-item"><span>Total Interest:</span><span id="totalInterest" style="color:#fbbf24;">$0</span></div>
-        <div class="result-item"><span>Welcome Tax (QC):</span><span id="welcomeTax">$0</span></div>
+        <div class="result-item"><span>Welcome Tax (Outside MTL):</span><span id="welcomeTax">$0</span></div>
     </div>
 </div>
 
 <div class="container" style="display: block;">
     <div class="card">
         <div style="display: flex; align-items: center; justify-content: space-between;">
-            <h2 style="margin: 0;">Financial Logic & Formulas</h2>
+            <h2 style="margin: 0;">Financial Logic & Formulas (2026 Updated)</h2>
             <button class="toggle-btn" onclick="toggleFormulas()">▼</button>
         </div>
         <div id="formulasContent" class="collapsible-content">
             <div class="formula-grid">
                 <div class="formula-item">
                     <span class="formula-title">GDS Ratio (Housing Limit)</span>
-                    Max 32% of gross income for housing.
+                    Max 39% of gross income for housing (Score 680+).
                     $$GDS = \frac{Mortgage + Tax + Heat + (0.5 \times Condo)}{Monthly Income}$$
                 </div>
                 <div class="formula-item">
                     <span class="formula-title">TDS Ratio (Debt Limit)</span>
-                    Max 40% of gross income for all debt.
+                    Max 44% of gross income for all debt (Score 680+).
                     $$TDS = \frac{Housing Costs + Personal Debt}{Monthly Income}$$
                 </div>
                 <div class="formula-item">
@@ -281,13 +273,13 @@
                     $$i_{stress} = \max(\text{Rate} + 2\%, 5.25\%)$$
                 </div>
                 <div class="formula-item">
-                    <span class="formula-title">Quebec Welcome Tax (2026)</span>
-                    Standard Provincial Brackets:
+                    <span class="formula-title">Quebec Welcome Tax (2026 Index)</span>
+                    Standard Provincial Brackets (Non-Montreal):
                     <table class="welcome-tax-table">
                         <tr><td>First $62,900</td><td>0.5%</td></tr>
                         <tr><td>$62,901 - $315,000</td><td>1.0%</td></tr>
-                        <tr><td>$315,001 - $500,000</td><td>1.5%</td></tr>
-                        <tr><td>Above $500,000</td><td>3.0%</td></tr>
+                        <tr><td>$315,001 - $552,300</td><td>1.5%</td></tr>
+                        <tr><td>Above $552,300</td><td>3.0%</td></tr>
                     </table>
                 </div>
             </div>
@@ -329,41 +321,79 @@ function calculate() {
     const monthlyHeat = parseFloat(document.getElementById('heating').value) || 0;
     const monthlyCondo = parseFloat(document.getElementById('condo').value) || 0;
     const marketRate = (parseFloat(document.getElementById('rate').value) || 0) / 100;
-    const years = parseInt(document.getElementById('amortization').value);
+    let years = parseInt(document.getElementById('amortization').value);
 
+    // 1. STRESS TEST & AMORTIZATION LOGIC
     const stressRate = Math.max(marketRate + 0.02, 0.0525);
     const rStress = stressRate / 12;
-    const n = years * 12;
     const rMarket = marketRate / 12;
+
+    // 2. UPDATED DEBT RATIOS (Standard for high-credit score earners)
+    const GDS_LIMIT_VAL = 0.39; 
+    const TDS_LIMIT_VAL = 0.44;
 
     let finalPrice, totalMortgage, cmhcTotal;
 
     if (currentMode === 'max') {
         const housingFixed = (annualTax / 12) + monthlyHeat + (monthlyCondo * 0.5);
-        const gdsLimit = (income * 0.32 / 12) - housingFixed;
-        const tdsLimit = (income * 0.40 / 12) - housingFixed - debts;
+        const gdsRoom = (income * GDS_LIMIT_VAL / 12) - housingFixed;
+        const tdsRoom = (income * TDS_LIMIT_VAL / 12) - housingFixed - debts;
         
-        const maxPI = Math.min(gdsLimit, tdsLimit);
-        document.getElementById('limitText').innerText = gdsLimit < tdsLimit ? "Limited by Income (GDS Rule)" : "Limited by Debt (TDS Rule)";
+        const maxPI = Math.min(gdsRoom, tdsRoom);
+        document.getElementById('limitText').innerText = gdsRoom < tdsRoom ? "Limited by Housing Ratio (GDS)" : "Limited by Total Debt (TDS)";
 
-        let maxLoan = maxPI > 0 ? maxPI * ((1 - Math.pow(1 + rStress, -n)) / rStress) : 0;
+        // Preliminary loan check
+        let maxLoan = maxPI > 0 ? maxPI * ((1 - Math.pow(1 + rStress, -(years * 12))) / rStress) : 0;
         let estPrice = maxLoan + downPayment;
-        let dpPct = estPrice > 0 ? (downPayment / estPrice) * 100 : 0;
-        let cmhcRate = (dpPct < 20 && dpPct >= 5) ? (dpPct >= 15 ? 0.028 : dpPct >= 10 ? 0.031 : 0.04) : 0;
+        
+        // LEGAL GUARD: 30-year amortization requires 20% down
+        if (downPayment / estPrice < 0.20 && years > 25) {
+            years = 25;
+            document.getElementById('amortization').value = "25";
+            maxLoan = maxPI * ((1 - Math.pow(1 + rStress, -(25 * 12))) / rStress);
+        }
+
+        let dpPct = (downPayment / (maxLoan + downPayment)) * 100;
+        let cmhcRate = 0;
+        if (dpPct < 20 && dpPct >= 5) {
+            cmhcRate = dpPct >= 15 ? 0.028 : dpPct >= 10 ? 0.031 : 0.04;
+        }
+        
         const netLoan = maxLoan / (1 + cmhcRate);
         finalPrice = netLoan + downPayment;
         cmhcTotal = netLoan * cmhcRate;
         totalMortgage = netLoan + cmhcTotal;
     } else {
-        document.getElementById('limitText').innerText = "";
         finalPrice = priceInput;
+        // Legal check for specific mode
+        if (downPayment / finalPrice < 0.20 && years > 25) {
+            years = 25;
+            document.getElementById('amortization').value = "25";
+        }
         const netLoan = Math.max(0, finalPrice - downPayment);
-        let dpPct = finalPrice > 0 ? (downPayment / finalPrice) * 100 : 0;
+        let dpPct = (downPayment / finalPrice) * 100;
         let cmhcRate = (dpPct < 20 && dpPct >= 5) ? (dpPct >= 15 ? 0.028 : dpPct >= 10 ? 0.031 : 0.04) : 0;
         cmhcTotal = netLoan * cmhcRate;
         totalMortgage = netLoan + cmhcTotal;
     }
 
+    // 3. WELCOME TAX - QUEBEC 2026 BRACKETS (OUTSIDE MONTREAL)
+    let wTax = 0;
+    const t1 = 62900, t2 = 315000, t3 = 552300; 
+    
+    if (finalPrice <= t1) {
+        wTax = finalPrice * 0.005;
+    } else if (finalPrice <= t2) {
+        wTax = (t1 * 0.005) + (finalPrice - t1) * 0.01;
+    } else if (finalPrice <= t3) {
+        wTax = (t1 * 0.005) + (t2 - t1) * 0.01 + (finalPrice - t2) * 0.015;
+    } else {
+        // High tier for outside Montreal municipalities
+        wTax = (t1 * 0.005) + (t2 - t1) * 0.01 + (t3 - t2) * 0.015 + (finalPrice - t3) * 0.03;
+    }
+
+    // 4. RENDERING
+    const n = years * 12;
     const piActual = (totalMortgage > 0 && rMarket > 0) ? totalMortgage * (rMarket * Math.pow(1 + rMarket, n)) / (Math.pow(1 + rMarket, n) - 1) : 0;
     const fmt = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 });
 
@@ -371,8 +401,6 @@ function calculate() {
     document.getElementById('monthlyPayment').innerText = fmt.format(piActual + (annualTax/12) + monthlyHeat + monthlyCondo);
     document.getElementById('piOnly').innerText = fmt.format(piActual);
     document.getElementById('cmhcFee').innerText = fmt.format(cmhcTotal);
-
-    let wTax = (finalPrice > 500000) ? 11621 + (finalPrice - 500000) * 0.03 : (finalPrice > 315000 ? 8846 + (finalPrice - 315000) * 0.015 : (finalPrice > 62900 ? 315 + (finalPrice - 62900) * 0.01 : finalPrice * 0.005));
     document.getElementById('welcomeTax').innerText = fmt.format(wTax);
 
     generateTable(totalMortgage, marketRate, years, piActual);
@@ -400,7 +428,7 @@ function generateTable(principal, annualRate, years, monthlyPI) {
     interestEl.innerText = fmt.format(totalInt);
 }
 
-// Reuse scenario logic from previous version
+// Scenario logic
 function getScenarios() { return JSON.parse(localStorage.getItem('qcScenarios') || '{}'); }
 function renderScenarios() {
     const list = document.getElementById('scenarioList');
@@ -445,9 +473,8 @@ function clearAllScenarios() {
 
 function toggleFormulas() {
     const content = document.getElementById('formulasContent');
-    const button = event.target;
     content.classList.toggle('open');
-    button.innerText = content.classList.contains('open') ? '▲' : '▼';
+    event.target.innerText = content.classList.contains('open') ? '▲' : '▼';
 }
 
 renderScenarios();
