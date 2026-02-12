@@ -308,13 +308,43 @@ function setMode(mode) {
     document.getElementById('modeSpecific').classList.toggle('active', mode === 'specific');
     document.getElementById('incomeWrapper').style.display = mode === 'max' ? 'block' : 'none';
     document.getElementById('priceWrapper').style.display = mode === 'specific' ? 'block' : 'none';
-    document.getElementById('resultHeading').innerText = mode === 'max' ? 'Max Purchase' : 'Purchase Price';
+    document.getElementById('resultHeading').innerText = mode === 'max' ? 'Max Purchase (Blainville)' : 'Purchase Price';
     calculate();
+}
+
+function minDownPayment(price) {
+    if (price >= 1000000) return price * 0.20;
+    if (price <= 500000) return price * 0.05;
+    return (500000 * 0.05) + ((price - 500000) * 0.10);
+}
+
+function cmhcRate(dpPct, price) {
+    if (price >= 1000000 || dpPct >= 20) return 0;
+    if (dpPct >= 15) return 0.028;
+    if (dpPct >= 10) return 0.031;
+    if (dpPct >= 5) return 0.04;
+    return 0;
+}
+
+function mortgageFromPayment(payment, r, n) {
+    return payment * ((1 - Math.pow(1 + r, -n)) / r);
+}
+
+function paymentFromMortgage(mortgage, r, n) {
+    return mortgage * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+}
+
+function welcomeTaxBlainville(price) {
+    const t1 = 62900, t2 = 314900, t3 = 552300;
+    if (price <= t1) return price * 0.005;
+    if (price <= t2) return (t1 * 0.005) + (price - t1) * 0.01;
+    if (price <= t3) return (t1 * 0.005) + (t2 - t1) * 0.01 + (price - t2) * 0.015;
+    return (t1 * 0.005) + (t2 - t1) * 0.01 + (t3 - t2) * 0.015 + (price - t3) * 0.02;
 }
 
 function calculate() {
     const income = parseFloat(document.getElementById('income').value) || 0;
-    const downPayment = parseFloat(document.getElementById('downpayment').value) || 0;
+    const downPaymentInput = parseFloat(document.getElementById('downpayment').value) || 0;
     const priceInput = parseFloat(document.getElementById('purchasePrice').value) || 0;
     const debts = parseFloat(document.getElementById('loans').value) || 0;
     const annualTax = parseFloat(document.getElementById('propTax').value) || 0;
@@ -323,162 +353,83 @@ function calculate() {
     const marketRate = (parseFloat(document.getElementById('rate').value) || 0) / 100;
     let years = parseInt(document.getElementById('amortization').value);
 
-    // 1. STRESS TEST & AMORTIZATION LOGIC
     const stressRate = Math.max(marketRate + 0.02, 0.0525);
     const rStress = stressRate / 12;
     const rMarket = marketRate / 12;
 
-    // 2. UPDATED DEBT RATIOS (Standard for high-credit score earners)
-    const GDS_LIMIT_VAL = 0.39; 
-    const TDS_LIMIT_VAL = 0.44;
+    const GDS = 0.39, TDS = 0.44;
 
-    let finalPrice, totalMortgage, cmhcTotal;
+    let finalPrice = 0, baseLoan = 0, insuredMortgage = 0, cmhcTotal = 0;
 
     if (currentMode === 'max') {
-        const housingFixed = (annualTax / 12) + monthlyHeat + (monthlyCondo * 0.5);
-        const gdsRoom = (income * GDS_LIMIT_VAL / 12) - housingFixed;
-        const tdsRoom = (income * TDS_LIMIT_VAL / 12) - housingFixed - debts;
-        
-        const maxPI = Math.min(gdsRoom, tdsRoom);
-        document.getElementById('limitText').innerText = gdsRoom < tdsRoom ? "Limited by Housing Ratio (GDS)" : "Limited by Total Debt (TDS)";
+        const fixedHousing = (annualTax / 12) + monthlyHeat + (monthlyCondo * 0.5);
+        const maxGDS = (income * GDS / 12) - fixedHousing;
+        const maxTDS = (income * TDS / 12) - fixedHousing - debts;
+        const maxPayment = Math.min(maxGDS, maxTDS);
+        const n = years * 12;
 
-        // Preliminary loan check
-        let maxLoan = maxPI > 0 ? maxPI * ((1 - Math.pow(1 + rStress, -(years * 12))) / rStress) : 0;
-        let estPrice = maxLoan + downPayment;
-        
-        // LEGAL GUARD: 30-year amortization requires 20% down
-        if (downPayment / estPrice < 0.20 && years > 25) {
-            years = 25;
-            document.getElementById('amortization').value = "25";
-            maxLoan = maxPI * ((1 - Math.pow(1 + rStress, -(25 * 12))) / rStress);
+        let maxLoanUninsured = mortgageFromPayment(maxPayment, rStress, n);
+
+        let priceGuess = maxLoanUninsured + downPaymentInput;
+
+        for (let i = 0; i < 10; i++) {
+            if (downPaymentInput < minDownPayment(priceGuess)) {
+                priceGuess = downPaymentInput / 0.05;
+            }
+
+            let dpPct = (downPaymentInput / priceGuess) * 100;
+            let rate = cmhcRate(dpPct, priceGuess);
+            baseLoan = priceGuess - downPaymentInput;
+            cmhcTotal = baseLoan * rate;
+            insuredMortgage = baseLoan + cmhcTotal;
+
+            let requiredPayment = paymentFromMortgage(insuredMortgage, rStress, n);
+            let ratioAdjust = maxPayment / requiredPayment;
+            priceGuess *= ratioAdjust;
         }
 
-        let dpPct = (downPayment / (maxLoan + downPayment)) * 100;
-        let cmhcRate = 0;
-        if (dpPct < 20 && dpPct >= 5) {
-            cmhcRate = dpPct >= 15 ? 0.028 : dpPct >= 10 ? 0.031 : 0.04;
-        }
-        
-        const netLoan = maxLoan / (1 + cmhcRate);
-        finalPrice = netLoan + downPayment;
-        cmhcTotal = netLoan * cmhcRate;
-        totalMortgage = netLoan + cmhcTotal;
+        finalPrice = priceGuess;
     } else {
         finalPrice = priceInput;
-        // Legal check for specific mode
-        if (downPayment / finalPrice < 0.20 && years > 25) {
+
+        if (downPaymentInput < minDownPayment(finalPrice)) {
+            alert("Down payment below legal minimum for this price.");
+        }
+
+        if (downPaymentInput / finalPrice < 0.20 && years > 25) {
             years = 25;
             document.getElementById('amortization').value = "25";
         }
-        const netLoan = Math.max(0, finalPrice - downPayment);
-        let dpPct = (downPayment / finalPrice) * 100;
-        let cmhcRate = (dpPct < 20 && dpPct >= 5) ? (dpPct >= 15 ? 0.028 : dpPct >= 10 ? 0.031 : 0.04) : 0;
-        cmhcTotal = netLoan * cmhcRate;
-        totalMortgage = netLoan + cmhcTotal;
+
+        baseLoan = finalPrice - downPaymentInput;
+        let dpPct = (downPaymentInput / finalPrice) * 100;
+        let rate = cmhcRate(dpPct, finalPrice);
+        cmhcTotal = baseLoan * rate;
+        insuredMortgage = baseLoan + cmhcTotal;
     }
 
-    // 3. WELCOME TAX - QUEBEC 2026 BRACKETS (OUTSIDE MONTREAL)
-    let wTax = 0;
-    const t1 = 62900, t2 = 315000, t3 = 552300; 
-    
-    if (finalPrice <= t1) {
-        wTax = finalPrice * 0.005;
-    } else if (finalPrice <= t2) {
-        wTax = (t1 * 0.005) + (finalPrice - t1) * 0.01;
-    } else if (finalPrice <= t3) {
-        wTax = (t1 * 0.005) + (t2 - t1) * 0.01 + (finalPrice - t2) * 0.015;
-    } else {
-        // High tier for outside Montreal municipalities
-        wTax = (t1 * 0.005) + (t2 - t1) * 0.01 + (t3 - t2) * 0.015 + (finalPrice - t3) * 0.03;
-    }
-
-    // 4. RENDERING
     const n = years * 12;
-    const piActual = (totalMortgage > 0 && rMarket > 0) ? totalMortgage * (rMarket * Math.pow(1 + rMarket, n)) / (Math.pow(1 + rMarket, n) - 1) : 0;
-    const fmt = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 });
+    const monthlyPI = insuredMortgage > 0
+        ? paymentFromMortgage(insuredMortgage, rMarket, n)
+        : 0;
+
+    const wTax = welcomeTaxBlainville(finalPrice);
+
+    const fmt = new Intl.NumberFormat('en-CA', {
+        style: 'currency',
+        currency: 'CAD',
+        maximumFractionDigits: 0
+    });
 
     document.getElementById('mainResultDisplay').innerText = fmt.format(finalPrice);
-    document.getElementById('monthlyPayment').innerText = fmt.format(piActual + (annualTax/12) + monthlyHeat + monthlyCondo);
-    document.getElementById('piOnly').innerText = fmt.format(piActual);
+    document.getElementById('monthlyPayment').innerText =
+        fmt.format(monthlyPI + (annualTax / 12) + monthlyHeat + monthlyCondo);
+    document.getElementById('piOnly').innerText = fmt.format(monthlyPI);
     document.getElementById('cmhcFee').innerText = fmt.format(cmhcTotal);
     document.getElementById('welcomeTax').innerText = fmt.format(wTax);
 
-    generateTable(totalMortgage, marketRate, years, piActual);
+    generateTable(insuredMortgage, marketRate, years, monthlyPI);
 }
-
-function generateTable(principal, annualRate, years, monthlyPI) {
-    const body = document.getElementById('amortizationTableBody');
-    const interestEl = document.getElementById('totalInterest');
-    body.innerHTML = "";
-    if (principal <= 0 || monthlyPI <= 0) { interestEl.innerText = "$0"; return; }
-    let bal = principal;
-    const mRate = annualRate / 12;
-    let totalInt = 0;
-    const fmt = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 });
-    for (let y = 1; y <= years; y++) {
-        let yInt = 0, yPri = 0;
-        for (let m = 1; m <= 12; m++) {
-            let i = bal * mRate;
-            let p = monthlyPI - i;
-            yInt += i; yPri += p; bal -= p;
-        }
-        totalInt += yInt;
-        body.insertAdjacentHTML('beforeend', `<tr><td>${y}</td><td>${fmt.format(yPri)}</td><td>${fmt.format(yInt)}</td><td>${fmt.format(Math.max(0, bal))}</td></tr>`);
-    }
-    interestEl.innerText = fmt.format(totalInt);
-}
-
-// Scenario logic
-function getScenarios() { return JSON.parse(localStorage.getItem('qcScenarios') || '{}'); }
-function renderScenarios() {
-    const list = document.getElementById('scenarioList');
-    const scenarios = getScenarios();
-    list.innerHTML = "";
-    Object.keys(scenarios).forEach(name => {
-        list.innerHTML += `<div class="chip"><span onclick="loadScenario('${name.replace(/'/g, "\\'")}')" style="cursor: pointer;">${name}</span><span class="del-btn" onclick="deleteScenario('${name.replace(/'/g, "\\'")}')">&times;</span></div>`;
-    });
-}
-function saveScenario() {
-    const name = document.getElementById('scenarioName').value;
-    if (!name.trim()) { alert('Please enter a scenario name'); return; }
-    const scenarios = getScenarios();
-    const data = {};
-    document.querySelectorAll('.calc-trigger').forEach(input => data[input.id] = input.value);
-    scenarios[name] = data;
-    localStorage.setItem('qcScenarios', JSON.stringify(scenarios));
-    document.getElementById('scenarioName').value = '';
-    renderScenarios();
-}
-function loadScenario(name) {
-    const data = getScenarios()[name];
-    if (data) {
-        Object.keys(data).forEach(id => document.getElementById(id).value = data[id]);
-        calculate();
-    }
-}
-function deleteScenario(name) {
-    if (confirm(`Delete scenario "${name}"?`)) {
-        const scenarios = getScenarios();
-        delete scenarios[name];
-        localStorage.setItem('qcScenarios', JSON.stringify(scenarios));
-        renderScenarios();
-    }
-}
-function clearAllScenarios() {
-    if (confirm('Delete ALL saved scenarios? This cannot be undone.')) {
-        localStorage.removeItem('qcScenarios');
-        renderScenarios();
-    }
-}
-
-function toggleFormulas() {
-    const content = document.getElementById('formulasContent');
-    content.classList.toggle('open');
-    event.target.innerText = content.classList.contains('open') ? '▲' : '▼';
-}
-
-renderScenarios();
-calculate();
 </script>
 </body>
 </html>
