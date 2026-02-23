@@ -1,202 +1,180 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quebec Home Finance - Professional Suite</title>
-
-<style>
-body { font-family: Arial, sans-serif; padding:40px; background:#f4f6f9; }
-.container { max-width:1100px; margin:auto; display:grid; grid-template-columns:1fr 1fr; gap:30px; }
-.card { background:white; padding:25px; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.05); }
-input, select { width:100%; padding:8px; margin-bottom:10px; }
-.results-box { background:#1e293b; color:white; }
-.big-number { font-size:32px; font-weight:bold; color:#60a5fa; }
-.result-item { display:flex; justify-content:space-between; margin:8px 0; }
-</style>
-</head>
-<body>
-
-<div class="container">
-
-<div class="card">
-<h2>Max Affordability</h2>
-
-<label>Gross Annual Income</label>
-<input type="number" id="income" oninput="calculate()">
-
-<label>Down Payment</label>
-<input type="number" id="downpayment" oninput="calculate()">
-
-<label>Property Tax (Annual)</label>
-<input type="number" id="propTax" oninput="calculate()">
-
-<label>Heating (Monthly)</label>
-<input type="number" id="heating" oninput="calculate()">
-
-<label>Condo Fees (Monthly)</label>
-<input type="number" id="condo" oninput="calculate()">
-
-<label>Monthly Debts</label>
-<input type="number" id="loans" oninput="calculate()">
-
-<label>Interest Rate (%)</label>
-<input type="number" id="rate" value="4.19" step="0.01" oninput="calculate()">
-
-<label>Amortization</label>
-<select id="amortization" onchange="calculate()">
-<option value="30">30 Years (20% Down Required)</option>
-<option value="25" selected>25 Years</option>
-<option value="20">20 Years</option>
-</select>
-
-</div>
-
-<div class="card results-box">
-<h2>Maximum Purchase Price</h2>
-<div class="big-number" id="price">$0</div>
-
-<div class="result-item"><span>Monthly P&I:</span><span id="pi">$0</span></div>
-<div class="result-item"><span>Total Monthly Out:</span><span id="total">$0</span></div>
-<div class="result-item"><span>CMHC Insurance:</span><span id="cmhc">$0</span></div>
-<div class="result-item"><span>Welcome Tax:</span><span id="welcome">$0</span></div>
-
-</div>
-</div>
-
 <script>
+let currentMode = 'max';
 
-function minDownPayment(price){
-    if(price >= 1000000) return price * 0.20;
-    if(price <= 500000) return price * 0.05;
+function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('modeMax').classList.toggle('active', mode === 'max');
+    document.getElementById('modeSpecific').classList.toggle('active', mode === 'specific');
+    document.getElementById('incomeWrapper').style.display = mode === 'max' ? 'block' : 'none';
+    document.getElementById('priceWrapper').style.display = mode === 'specific' ? 'block' : 'none';
+    document.getElementById('resultHeading').innerText = mode === 'max' ? 'Max Purchase (Blainville)' : 'Purchase Price';
+    calculate();
+}
+
+function minDownPayment(price) {
+    if (price >= 1000000) return price * 0.20;
+    if (price <= 500000) return price * 0.05;
     return 25000 + (price - 500000) * 0.10;
 }
 
-function cmhcRate(dpPct, price){
-    if(price >= 1000000) return 0;
-    if(dpPct >= 20) return 0;
-    if(dpPct >= 15) return 0.028;
-    if(dpPct >= 10) return 0.031;
-    if(dpPct >= 5) return 0.04;
+function cmhcRate(dpPct, price) {
+    if (price >= 1000000) return 0;
+    if (dpPct >= 20) return 0;
+    if (dpPct >= 15) return 0.028;
+    if (dpPct >= 10) return 0.031;
+    if (dpPct >= 5) return 0.04;
     return 0;
 }
 
-function paymentFromMortgage(m, r, n){
-    if(r === 0) return m/n;
-    return m * (r * Math.pow(1+r,n)) / (Math.pow(1+r,n)-1);
+function mortgageFromPayment(payment, r, n) {
+    if (r === 0) return payment * n;
+    return payment * ((1 - Math.pow(1 + r, -n)) / r);
 }
 
-function mortgageFromPayment(p, r, n){
-    if(r === 0) return p*n;
-    return p * (1 - Math.pow(1+r,-n)) / r;
+function paymentFromMortgage(mortgage, r, n) {
+    if (r === 0) return mortgage / n;
+    return mortgage * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
 }
 
-function welcomeTax(price){
+function welcomeTaxBlainville(price) {
     let tax = 0;
 
-    if(price <= 62900) return price*0.005;
+    if (price <= 62900) return price * 0.005;
 
-    tax += 62900*0.005;
+    tax += 62900 * 0.005;
 
-    if(price <= 315000)
-        return tax + (price-62900)*0.01;
+    if (price <= 315000)
+        return tax + (price - 62900) * 0.01;
 
-    tax += (315000-62900)*0.01;
+    tax += (315000 - 62900) * 0.01;
 
-    if(price <= 552300)
-        return tax + (price-315000)*0.015;
+    if (price <= 552300)
+        return tax + (price - 315000) * 0.015;
 
-    tax += (552300-315000)*0.015;
+    tax += (552300 - 315000) * 0.015;
 
-    return tax + (price-552300)*0.03; // FIXED 3%
+    return tax + (price - 552300) * 0.03; // ✅ corrected to 3%
 }
 
-function calculate(){
+function calculate() {
 
-const income = parseFloat(document.getElementById('income').value)||0;
-const down = parseFloat(document.getElementById('downpayment').value)||0;
-const annualTax = parseFloat(document.getElementById('propTax').value)||0;
-const heat = parseFloat(document.getElementById('heating').value)||0;
-const condo = parseFloat(document.getElementById('condo').value)||0;
-const debts = parseFloat(document.getElementById('loans').value)||0;
-const marketRate = (parseFloat(document.getElementById('rate').value)||0)/100;
-let years = parseInt(document.getElementById('amortization').value);
+    const income = parseFloat(document.getElementById('income').value) || 0;
+    const downPaymentInput = parseFloat(document.getElementById('downpayment').value) || 0;
+    const priceInput = parseFloat(document.getElementById('purchasePrice').value) || 0;
+    const debts = parseFloat(document.getElementById('loans').value) || 0;
+    const annualTax = parseFloat(document.getElementById('propTax').value) || 0;
+    const monthlyHeat = parseFloat(document.getElementById('heating').value) || 0;
+    const monthlyCondo = parseFloat(document.getElementById('condo').value) || 0;
+    const marketRate = (parseFloat(document.getElementById('rate').value) || 0) / 100;
+    let years = parseInt(document.getElementById('amortization').value);
 
-const stressRate = Math.max(marketRate+0.02,0.0525);
+    const stressRate = Math.max(marketRate + 0.02, 0.0525);
+    const rStress = stressRate / 12;
+    const rMarket = marketRate / 12;
 
-const rStress = stressRate/12;
-const rMarket = marketRate/12;
-const n = years*12;
+    const GDS = 0.39;
+    const TDS = 0.44;
 
-const GDS = 0.39;
-const TDS = 0.44;
+    let finalPrice = 0, baseLoan = 0, insuredMortgage = 0, cmhcTotal = 0;
 
-const fixedHousing = (annualTax/12)+heat+(condo*0.5);
+    if (currentMode === 'max') {
 
-let maxPaymentGDS = (income*GDS/12)-fixedHousing;
-let maxPaymentTDS = (income*TDS/12)-fixedHousing-debts;
+        const fixedHousing = (annualTax / 12) + monthlyHeat + (monthlyCondo * 0.5);
 
-let maxPayment = Math.min(maxPaymentGDS,maxPaymentTDS);
+        let maxPaymentGDS = (income * GDS / 12) - fixedHousing;
+        let maxPaymentTDS = (income * TDS / 12) - fixedHousing - debts;
 
-if(maxPayment <= 0){
-document.getElementById('price').innerText="$0";
-return;
+        let maxPayment = Math.min(maxPaymentGDS, maxPaymentTDS);
+
+        if (maxPayment <= 0) {
+            finalPrice = 0;
+        } else {
+
+            let priceGuess = 300000;
+
+            for (let i = 0; i < 40; i++) {
+
+                // Enforce $1M rule
+                if (priceGuess >= 1000000 && downPaymentInput / priceGuess < 0.20) {
+                    priceGuess = downPaymentInput / 0.20;
+                }
+
+                // Enforce minimum down payment
+                if (downPaymentInput < minDownPayment(priceGuess)) {
+                    priceGuess = downPaymentInput / 0.05;
+                }
+
+                let dpPct = (downPaymentInput / priceGuess) * 100;
+
+                if (dpPct < 5) {
+                    priceGuess = downPaymentInput / 0.05;
+                    dpPct = 5;
+                }
+
+                // Insured max amortization
+                if (dpPct < 20 && years > 25) {
+                    years = 25;
+                }
+
+                const n = years * 12;
+
+                baseLoan = priceGuess - downPaymentInput;
+                cmhcTotal = baseLoan * cmhcRate(dpPct, priceGuess);
+                insuredMortgage = baseLoan + cmhcTotal;
+
+                let requiredPayment = paymentFromMortgage(insuredMortgage, rStress, n);
+
+                let ratio = maxPayment / requiredPayment;
+
+                if (!isFinite(ratio) || ratio <= 0) break;
+
+                priceGuess *= ratio;
+            }
+
+            finalPrice = priceGuess;
+        }
+
+    } else {
+
+        finalPrice = priceInput;
+
+        if (downPaymentInput < minDownPayment(finalPrice)) {
+            alert("Down payment below legal minimum for this price.");
+        }
+
+        let dpPct = (downPaymentInput / finalPrice) * 100;
+
+        if (dpPct < 20 && years > 25) {
+            years = 25;
+            document.getElementById('amortization').value = "25";
+        }
+
+        baseLoan = finalPrice - downPaymentInput;
+        cmhcTotal = baseLoan * cmhcRate(dpPct, finalPrice);
+        insuredMortgage = baseLoan + cmhcTotal;
+    }
+
+    const n = years * 12;
+
+    const monthlyPI = insuredMortgage > 0
+        ? paymentFromMortgage(insuredMortgage, rMarket, n)
+        : 0;
+
+    const wTax = welcomeTaxBlainville(finalPrice);
+
+    const fmt = new Intl.NumberFormat('en-CA', {
+        style: 'currency',
+        currency: 'CAD',
+        maximumFractionDigits: 0
+    });
+
+    document.getElementById('mainResultDisplay').innerText = fmt.format(finalPrice);
+    document.getElementById('monthlyPayment').innerText =
+        fmt.format(monthlyPI + (annualTax / 12) + monthlyHeat + monthlyCondo);
+    document.getElementById('piOnly').innerText = fmt.format(monthlyPI);
+    document.getElementById('cmhcFee').innerText = fmt.format(cmhcTotal);
+    document.getElementById('welcomeTax').innerText = fmt.format(wTax);
+
+    generateTable(insuredMortgage, marketRate, years, monthlyPI);
 }
-
-let price = 300000;
-
-for(let i=0;i<40;i++){
-
-    if(price >= 1000000 && down/price < 0.20){
-        price = down/0.20;
-    }
-
-    if(down < minDownPayment(price)){
-        price = down/0.05;
-    }
-
-    let dpPct = (down/price)*100;
-
-    if(dpPct < 5){
-        price = down/0.05;
-        dpPct = 5;
-    }
-
-    if(dpPct < 20 && years>25){
-        years = 25;
-    }
-
-    const n = years*12;
-
-    let baseLoan = price-down;
-    let insurance = baseLoan * cmhcRate(dpPct,price);
-    let insured = baseLoan + insurance;
-
-    let requiredPayment = paymentFromMortgage(insured,rStress,n);
-
-    let ratio = maxPayment/requiredPayment;
-
-    price = price * ratio;
-}
-
-let baseLoan = price-down;
-let dpPct = (down/price)*100;
-let insurance = baseLoan * cmhcRate(dpPct,price);
-let insured = baseLoan + insurance;
-
-const monthlyPI = paymentFromMortgage(insured,rMarket,years*12);
-const totalMonthly = monthlyPI + fixedHousing;
-
-const fmt = new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0});
-
-document.getElementById('price').innerText = fmt.format(price);
-document.getElementById('pi').innerText = fmt.format(monthlyPI);
-document.getElementById('total').innerText = fmt.format(totalMonthly);
-document.getElementById('cmhc').innerText = fmt.format(insurance);
-document.getElementById('welcome').innerText = fmt.format(welcomeTax(price));
-
-}
-
 </script>
-</body>
-</html>
