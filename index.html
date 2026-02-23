@@ -1,3 +1,305 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quebec Home Finance - Professional Suite</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --accent: #3b82f6;
+            --border: #e2e8f0;
+            --success: #10b981;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 900px) {
+            .container { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+            border: 1px solid var(--border);
+            margin-bottom: 30px;
+        }
+
+        .mode-selector {
+            display: flex;
+            background: #e2e8f0;
+            padding: 4px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: 0.2s;
+            background: transparent;
+            color: #64748b;
+        }
+
+        .mode-btn.active {
+            background: #fff;
+            color: var(--primary);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .scenario-bar {
+            background: #fff;
+            padding: 15px 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .scenario-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+        .chip {
+            padding: 6px 14px;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .chip .del-btn { font-size: 1.1rem; opacity: 0.6; cursor: pointer; }
+
+        .save-group { display: flex; gap: 5px; margin-left: auto; }
+        .save-input { padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1; }
+        .btn-save { background: var(--success); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .btn-clear-all { background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+
+        h1, h2 { margin: 0; font-size: 1.6rem; letter-spacing: -0.5px; }
+        .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.2px; color: #94a3b8; margin: 20px 0 10px 0; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
+        
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .input-group { margin-bottom: 12px; }
+        label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: #475569; }
+        
+        input, select {
+            width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem;
+            box-sizing: border-box; background: #fcfcfd;
+        }
+
+        .results-box { background: #1e293b; color: white; position: sticky; top: 20px; border: none; }
+        .big-number { font-size: 2.8rem; font-weight: 800; color: #60a5fa; margin: 5px 0; }
+        .limit-indicator { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-top: -5px; margin-bottom: 15px; font-weight: 700; }
+        .result-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
+        
+        .formula-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 0.85rem; margin-top: 15px; }
+        .formula-item { background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid var(--border); }
+        .formula-title { font-weight: 700; color: var(--primary); margin-bottom: 8px; display: block; }
+        .welcome-tax-table { width: 100%; font-size: 0.8rem; border-spacing: 0; margin-top: 10px; }
+        .welcome-tax-table td { padding: 4px 0; border-bottom: 1px solid #e2e8f0; }
+
+        .table-container { overflow-x: auto; margin-top: 15px; border-radius: 12px; border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+        th { background: #f8fafc; padding: 12px; border-bottom: 2px solid var(--border); }
+        td { padding: 12px; border-bottom: 1px solid var(--border); }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 0;
+            padding: 0;
+        }
+
+        .page-header h3 {
+            font-size: 1.3rem;
+            margin: 0;
+            color: var(--primary);
+            font-weight: 800;
+            letter-spacing: -1px;
+            line-height: 1;
+            padding: 20px 0;
+        }
+
+        .toggle-btn {
+            background: none;
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            padding: 0;
+            margin-left: 10px;
+        }
+
+        .collapsible-content {
+            display: none;
+        }
+
+        .collapsible-content.open {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-header">
+    <h3>Quebec Home Finance - Professional Suite</h3>
+</div>
+
+<div class="container" style="display: block; margin-bottom: 0;">
+    <div class="scenario-bar">
+        <strong>Scenarios:</strong>
+        <div id="scenarioList" class="scenario-chips"></div>
+        <div class="save-group">
+            <input type="text" id="scenarioName" class="save-input" placeholder="Scenario name...">
+            <button class="btn-save" onclick="saveScenario()">Save</button>
+            <button class="btn-clear-all" onclick="clearAllScenarios()">Clear All</button>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card">
+        <div class="mode-selector">
+            <button id="modeMax" class="mode-btn active" onclick="setMode('max')">Max Affordability</button>
+            <button id="modeSpecific" class="mode-btn" onclick="setMode('specific')">Specific Property</button>
+        </div>
+
+        <div class="section-title">Financials</div>
+        <div class="input-grid">
+            <div id="incomeWrapper" class="input-group">
+                <label>Gross Annual Income ($) <small>(Incl. 2-yr bonus avg)</small></label>
+                <input type="number" id="income" class="calc-trigger" placeholder="0" oninput="calculate()">
+            </div>
+            <div id="priceWrapper" class="input-group" style="display: none;">
+                <label>Purchase Price ($)</label>
+                <input type="number" id="purchasePrice" class="calc-trigger" placeholder="0" oninput="calculate()">
+            </div>
+            <div class="input-group">
+                <label>Down Payment ($)</label>
+                <input type="number" id="downpayment" class="calc-trigger" placeholder="0" oninput="calculate()">
+            </div>
+        </div>
+
+        <div class="section-title">Property Costs & Amortization</div>
+        <div class="input-grid">
+            <div class="input-group"><label>Property + School Tax ($/yr)</label><input type="number" id="propTax" class="calc-trigger" placeholder="0" oninput="calculate()"></div>
+            <div class="input-group"><label>Hydro/Heat ($/mo)</label><input type="number" id="heating" class="calc-trigger" placeholder="0" oninput="calculate()"></div>
+            <div class="input-group"><label>Condo Fees ($/mo)</label><input type="number" id="condo" class="calc-trigger" placeholder="0" oninput="calculate()"></div>
+            <div class="input-group"><label>Interest Rate (%)</label><input type="number" id="rate" class="calc-trigger" value="4.19" step="0.01" oninput="calculate()"></div>
+        </div>
+
+        <div class="input-grid">
+            <div class="input-group">
+                <label>Amortization</label>
+                <select id="amortization" class="calc-trigger" onchange="calculate()">
+                    <option value="30">30 Years (Min 20% DP)</option>
+                    <option value="25" selected>25 Years</option>
+                    <option value="20">20 Years</option>
+                    <option value="15">15 Years</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Monthly Debts ($/mo)</label>
+                <input type="number" id="loans" class="calc-trigger" placeholder="Car/Credit Cards" oninput="calculate()">
+            </div>
+        </div>
+    </div>
+
+    <div class="card results-box">
+        <h2 id="resultHeading">Max Purchase</h2>
+        <div class="big-number" id="mainResultDisplay">$0</div>
+        <div id="limitText" class="limit-indicator"></div>
+        
+        <div class="result-item"><span>Monthly Cash Out:</span><span id="monthlyPayment" style="color: #60a5fa; font-weight: 800;">$0</span></div>
+        <div class="result-item"><span>Mortgage P+I:</span><span id="piOnly">$0</span></div>
+        <div class="result-item"><span>CMHC Insurance:</span><span id="cmhcFee">$0</span></div>
+        <div class="result-item"><span>Total Interest:</span><span id="totalInterest" style="color:#fbbf24;">$0</span></div>
+        <div class="result-item"><span>Welcome Tax (Outside MTL):</span><span id="welcomeTax">$0</span></div>
+    </div>
+</div>
+
+<div class="container" style="display: block;">
+    <div class="card">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <h2 style="margin: 0;">Financial Logic & Formulas (2026 Updated)</h2>
+            <button class="toggle-btn" onclick="toggleFormulas()">▼</button>
+        </div>
+        <div id="formulasContent" class="collapsible-content">
+            <div class="formula-grid">
+                <div class="formula-item">
+                    <span class="formula-title">GDS Ratio (Housing Limit)</span>
+                    Max 39% of gross income for housing (Score 680+).
+                    $$GDS = \frac{Mortgage + Tax + Heat + (0.5 \times Condo)}{Monthly Income}$$
+                </div>
+                <div class="formula-item">
+                    <span class="formula-title">TDS Ratio (Debt Limit)</span>
+                    Max 44% of gross income for all debt (Score 680+).
+                    $$TDS = \frac{Housing Costs + Personal Debt}{Monthly Income}$$
+                </div>
+                <div class="formula-item">
+                    <span class="formula-title">The Stress Test Rate</span>
+                    Qualifying rate used for calculations.
+                    $$i_{stress} = \max(\text{Rate} + 2\%, 5.25\%)$$
+                </div>
+                <div class="formula-item">
+                    <span class="formula-title">Quebec Welcome Tax (2026 Index)</span>
+                    Standard Provincial Brackets (Non-Montreal):
+                    <table class="welcome-tax-table">
+                        <tr><td>First $62,900</td><td>0.5%</td></tr>
+                        <tr><td>$62,901 - $315,000</td><td>1.0%</td></tr>
+                        <tr><td>$315,001 - $552,300</td><td>1.5%</td></tr>
+                        <tr><td>Above $552,300</td><td>3.0%</td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Amortization Schedule</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th>Year</th><th>Principal</th><th>Interest</th><th>Remaining Balance</th></tr>
+                </thead>
+                <tbody id="amortizationTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <script>
 let currentMode = 'max';
 
@@ -14,12 +316,11 @@ function setMode(mode) {
 function minDownPayment(price) {
     if (price >= 1000000) return price * 0.20;
     if (price <= 500000) return price * 0.05;
-    return 25000 + (price - 500000) * 0.10;
+    return (500000 * 0.05) + ((price - 500000) * 0.10);
 }
 
 function cmhcRate(dpPct, price) {
-    if (price >= 1000000) return 0;
-    if (dpPct >= 20) return 0;
+    if (price >= 1000000 || dpPct >= 20) return 0;
     if (dpPct >= 15) return 0.028;
     if (dpPct >= 10) return 0.031;
     if (dpPct >= 5) return 0.04;
@@ -27,37 +328,22 @@ function cmhcRate(dpPct, price) {
 }
 
 function mortgageFromPayment(payment, r, n) {
-    if (r === 0) return payment * n;
     return payment * ((1 - Math.pow(1 + r, -n)) / r);
 }
 
 function paymentFromMortgage(mortgage, r, n) {
-    if (r === 0) return mortgage / n;
     return mortgage * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
 }
 
 function welcomeTaxBlainville(price) {
-    let tax = 0;
-
-    if (price <= 62900) return price * 0.005;
-
-    tax += 62900 * 0.005;
-
-    if (price <= 315000)
-        return tax + (price - 62900) * 0.01;
-
-    tax += (315000 - 62900) * 0.01;
-
-    if (price <= 552300)
-        return tax + (price - 315000) * 0.015;
-
-    tax += (552300 - 315000) * 0.015;
-
-    return tax + (price - 552300) * 0.03; // ✅ corrected to 3%
+    const t1 = 62900, t2 = 314900, t3 = 552300;
+    if (price <= t1) return price * 0.005;
+    if (price <= t2) return (t1 * 0.005) + (price - t1) * 0.01;
+    if (price <= t3) return (t1 * 0.005) + (t2 - t1) * 0.01 + (price - t2) * 0.015;
+    return (t1 * 0.005) + (t2 - t1) * 0.01 + (t3 - t2) * 0.015 + (price - t3) * 0.02;
 }
 
 function calculate() {
-
     const income = parseFloat(document.getElementById('income').value) || 0;
     const downPaymentInput = parseFloat(document.getElementById('downpayment').value) || 0;
     const priceInput = parseFloat(document.getElementById('purchasePrice').value) || 0;
@@ -72,90 +358,58 @@ function calculate() {
     const rStress = stressRate / 12;
     const rMarket = marketRate / 12;
 
-    const GDS = 0.39;
-    const TDS = 0.44;
+    const GDS = 0.39, TDS = 0.44;
 
     let finalPrice = 0, baseLoan = 0, insuredMortgage = 0, cmhcTotal = 0;
 
     if (currentMode === 'max') {
-
         const fixedHousing = (annualTax / 12) + monthlyHeat + (monthlyCondo * 0.5);
+        const maxGDS = (income * GDS / 12) - fixedHousing;
+        const maxTDS = (income * TDS / 12) - fixedHousing - debts;
+        const maxPayment = Math.min(maxGDS, maxTDS);
+        const n = years * 12;
 
-        let maxPaymentGDS = (income * GDS / 12) - fixedHousing;
-        let maxPaymentTDS = (income * TDS / 12) - fixedHousing - debts;
+        let maxLoanUninsured = mortgageFromPayment(maxPayment, rStress, n);
 
-        let maxPayment = Math.min(maxPaymentGDS, maxPaymentTDS);
+        let priceGuess = maxLoanUninsured + downPaymentInput;
 
-        if (maxPayment <= 0) {
-            finalPrice = 0;
-        } else {
-
-            let priceGuess = 300000;
-
-            for (let i = 0; i < 40; i++) {
-
-                // Enforce $1M rule
-                if (priceGuess >= 1000000 && downPaymentInput / priceGuess < 0.20) {
-                    priceGuess = downPaymentInput / 0.20;
-                }
-
-                // Enforce minimum down payment
-                if (downPaymentInput < minDownPayment(priceGuess)) {
-                    priceGuess = downPaymentInput / 0.05;
-                }
-
-                let dpPct = (downPaymentInput / priceGuess) * 100;
-
-                if (dpPct < 5) {
-                    priceGuess = downPaymentInput / 0.05;
-                    dpPct = 5;
-                }
-
-                // Insured max amortization
-                if (dpPct < 20 && years > 25) {
-                    years = 25;
-                }
-
-                const n = years * 12;
-
-                baseLoan = priceGuess - downPaymentInput;
-                cmhcTotal = baseLoan * cmhcRate(dpPct, priceGuess);
-                insuredMortgage = baseLoan + cmhcTotal;
-
-                let requiredPayment = paymentFromMortgage(insuredMortgage, rStress, n);
-
-                let ratio = maxPayment / requiredPayment;
-
-                if (!isFinite(ratio) || ratio <= 0) break;
-
-                priceGuess *= ratio;
+        for (let i = 0; i < 10; i++) {
+            if (downPaymentInput < minDownPayment(priceGuess)) {
+                priceGuess = downPaymentInput / 0.05;
             }
 
-            finalPrice = priceGuess;
+            let dpPct = (downPaymentInput / priceGuess) * 100;
+            let rate = cmhcRate(dpPct, priceGuess);
+            baseLoan = priceGuess - downPaymentInput;
+            cmhcTotal = baseLoan * rate;
+            insuredMortgage = baseLoan + cmhcTotal;
+
+            let requiredPayment = paymentFromMortgage(insuredMortgage, rStress, n);
+            let ratioAdjust = maxPayment / requiredPayment;
+            priceGuess *= ratioAdjust;
         }
 
+        finalPrice = priceGuess;
     } else {
-
         finalPrice = priceInput;
 
         if (downPaymentInput < minDownPayment(finalPrice)) {
             alert("Down payment below legal minimum for this price.");
         }
 
-        let dpPct = (downPaymentInput / finalPrice) * 100;
-
-        if (dpPct < 20 && years > 25) {
+        if (downPaymentInput / finalPrice < 0.20 && years > 25) {
             years = 25;
             document.getElementById('amortization').value = "25";
         }
 
         baseLoan = finalPrice - downPaymentInput;
-        cmhcTotal = baseLoan * cmhcRate(dpPct, finalPrice);
+        let dpPct = (downPaymentInput / finalPrice) * 100;
+        let rate = cmhcRate(dpPct, finalPrice);
+        cmhcTotal = baseLoan * rate;
         insuredMortgage = baseLoan + cmhcTotal;
     }
 
     const n = years * 12;
-
     const monthlyPI = insuredMortgage > 0
         ? paymentFromMortgage(insuredMortgage, rMarket, n)
         : 0;
@@ -178,3 +432,5 @@ function calculate() {
     generateTable(insuredMortgage, marketRate, years, monthlyPI);
 }
 </script>
+</body>
+</html>
