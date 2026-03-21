@@ -309,7 +309,7 @@ function setMode(mode) {
     document.getElementById('modeSpecific').classList.toggle('active', mode === 'specific');
     document.getElementById('incomeWrapper').style.display = mode === 'max' ? 'block' : 'none';
     document.getElementById('priceWrapper').style.display = mode === 'specific' ? 'block' : 'none';
-    document.getElementById('resultHeading').innerText = mode === 'max' ? 'Max Purchase (Blainville)' : 'Purchase Price';
+    document.getElementById('resultHeading').innerText = mode === 'max' ? 'Max Purchase' : 'Purchase Price';
     calculate();
 }
 
@@ -335,101 +335,127 @@ function paymentFromMortgage(mortgage, r, n) {
     return mortgage * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
 }
 
-function welcomeTaxBlainville(price) {
-    const t1 = 62900, t2 = 314900, t3 = 552300;
+// PATCH: Correct QC welcome tax (3% top bracket)
+function welcomeTaxOutsideMTL(price) {
+    const t1 = 62900, t2 = 315000, t3 = 552300;
     if (price <= t1) return price * 0.005;
     if (price <= t2) return (t1 * 0.005) + (price - t1) * 0.01;
     if (price <= t3) return (t1 * 0.005) + (t2 - t1) * 0.01 + (price - t2) * 0.015;
-    return (t1 * 0.005) + (t2 - t1) * 0.01 + (t3 - t2) * 0.015 + (price - t3) * 0.02;
+    return (t1 * 0.005) + (t2 - t1) * 0.01 + (t3 - t2) * 0.015 + (price - t3) * 0.03;
 }
 
 function calculate() {
-    const income = parseFloat(document.getElementById('income').value) || 0;
-    const downPaymentInput = parseFloat(document.getElementById('downpayment').value) || 0;
-    const priceInput = parseFloat(document.getElementById('purchasePrice').value) || 0;
-    const debts = parseFloat(document.getElementById('loans').value) || 0;
-    const annualTax = parseFloat(document.getElementById('propTax').value) || 0;
-    const monthlyHeat = parseFloat(document.getElementById('heating').value) || 0;
-    const monthlyCondo = parseFloat(document.getElementById('condo').value) || 0;
-    const marketRate = (parseFloat(document.getElementById('rate').value) || 0) / 100;
-    let years = parseInt(document.getElementById('amortization').value);
+    const income = +document.getElementById('income').value || 0;
+    const downPayment = +document.getElementById('downpayment').value || 0;
+    const priceInput = +document.getElementById('purchasePrice').value || 0;
+    const debts = +document.getElementById('loans').value || 0;
+    const annualTax = +document.getElementById('propTax').value || 0;
+    const heat = +document.getElementById('heating').value || 0;
+    const condo = +document.getElementById('condo').value || 0;
+    const marketRate = (+document.getElementById('rate').value || 0) / 100;
+    let years = +document.getElementById('amortization').value;
 
     const stressRate = Math.max(marketRate + 0.02, 0.0525);
     const rStress = stressRate / 12;
     const rMarket = marketRate / 12;
+    const n = years * 12;
 
     const GDS = 0.39, TDS = 0.44;
 
-    let finalPrice = 0, baseLoan = 0, insuredMortgage = 0, cmhcTotal = 0;
+    let price = 0, baseLoan = 0, insuredMortgage = 0, cmhcTotal = 0;
+
+    const fixedHousing = (annualTax / 12) + heat + (condo * 0.5);
+    const maxGDS = (income * GDS / 12) - fixedHousing;
+    const maxTDS = (income * TDS / 12) - fixedHousing - debts;
+    const maxPayment = Math.min(maxGDS, maxTDS);
 
     if (currentMode === 'max') {
-        const fixedHousing = (annualTax / 12) + monthlyHeat + (monthlyCondo * 0.5);
-        const maxGDS = (income * GDS / 12) - fixedHousing;
-        const maxTDS = (income * TDS / 12) - fixedHousing - debts;
-        const maxPayment = Math.min(maxGDS, maxTDS);
-        const n = years * 12;
+        if (maxPayment <= 0) return;
 
-        let maxLoanUninsured = mortgageFromPayment(maxPayment, rStress, n);
-
-        let priceGuess = maxLoanUninsured + downPaymentInput;
+        let loanGuess = mortgageFromPayment(maxPayment, rStress, n);
+        price = loanGuess + downPayment;
 
         for (let i = 0; i < 10; i++) {
-            if (downPaymentInput < minDownPayment(priceGuess)) {
-                priceGuess = downPaymentInput / 0.05;
+            if (downPayment < minDownPayment(price)) {
+                price = downPayment / 0.05;
             }
 
-            let dpPct = (downPaymentInput / priceGuess) * 100;
-            let rate = cmhcRate(dpPct, priceGuess);
-            baseLoan = priceGuess - downPaymentInput;
-            cmhcTotal = baseLoan * rate;
+            let dpPct = (downPayment / price) * 100;
+            let rate = cmhcRate(dpPct, price);
+            baseLoan = price - downPayment;
+            cmhcTotal = baseLoan * rate * 1.09975; // PATCH: QC tax
             insuredMortgage = baseLoan + cmhcTotal;
 
-            let requiredPayment = paymentFromMortgage(insuredMortgage, rStress, n);
-            let ratioAdjust = maxPayment / requiredPayment;
-            priceGuess *= ratioAdjust;
+            let req = paymentFromMortgage(insuredMortgage, rStress, n);
+            price *= maxPayment / req;
         }
-
-        finalPrice = priceGuess;
     } else {
-        finalPrice = priceInput;
+        price = priceInput;
 
-        if (downPaymentInput < minDownPayment(finalPrice)) {
-            alert("Down payment below legal minimum for this price.");
+        if (downPayment < minDownPayment(price)) {
+            alert("Down payment below legal minimum.");
         }
 
-        if (downPaymentInput / finalPrice < 0.20 && years > 25) {
+        if (downPayment / price < 0.20 && years > 25) {
             years = 25;
             document.getElementById('amortization').value = "25";
         }
 
-        baseLoan = finalPrice - downPaymentInput;
-        let dpPct = (downPaymentInput / finalPrice) * 100;
-        let rate = cmhcRate(dpPct, finalPrice);
-        cmhcTotal = baseLoan * rate;
+        baseLoan = price - downPayment;
+        let dpPct = (downPayment / price) * 100;
+        let rate = cmhcRate(dpPct, price);
+        cmhcTotal = baseLoan * rate * 1.09975;
         insuredMortgage = baseLoan + cmhcTotal;
+
+        // PATCH: Stress-test validation
+        const stressPI = paymentFromMortgage(insuredMortgage, rStress, years * 12);
+        const gds = (stressPI + fixedHousing) / (income / 12);
+        const tds = (stressPI + fixedHousing + debts) / (income / 12);
+
+        document.getElementById('limitText').innerText =
+            gds <= GDS && tds <= TDS ? "✓ QUALIFIES (STRESS TEST)" : "✗ DOES NOT QUALIFY";
     }
 
-    const n = years * 12;
-    const monthlyPI = insuredMortgage > 0
-        ? paymentFromMortgage(insuredMortgage, rMarket, n)
-        : 0;
+    const monthlyPI = paymentFromMortgage(insuredMortgage, rMarket, years * 12);
+    const welcomeTax = welcomeTaxOutsideMTL(price);
 
-    const wTax = welcomeTaxBlainville(finalPrice);
+    const fmt = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 });
 
-    const fmt = new Intl.NumberFormat('en-CA', {
-        style: 'currency',
-        currency: 'CAD',
-        maximumFractionDigits: 0
-    });
-
-    document.getElementById('mainResultDisplay').innerText = fmt.format(finalPrice);
+    document.getElementById('mainResultDisplay').innerText = fmt.format(price);
     document.getElementById('monthlyPayment').innerText =
-        fmt.format(monthlyPI + (annualTax / 12) + monthlyHeat + monthlyCondo);
+        fmt.format(monthlyPI + (annualTax / 12) + heat + condo);
     document.getElementById('piOnly').innerText = fmt.format(monthlyPI);
     document.getElementById('cmhcFee').innerText = fmt.format(cmhcTotal);
-    document.getElementById('welcomeTax').innerText = fmt.format(wTax);
+    document.getElementById('welcomeTax').innerText = fmt.format(welcomeTax);
 
     generateTable(insuredMortgage, marketRate, years, monthlyPI);
+}
+
+// PATCH: Amortization table renderer
+function generateTable(balance, rate, years, payment) {
+    const tbody = document.getElementById('amortizationTableBody');
+    tbody.innerHTML = "";
+    let r = rate / 12;
+    let remaining = balance;
+
+    for (let y = 1; y <= years; y++) {
+        let interest = 0, principal = 0;
+        for (let m = 0; m < 12; m++) {
+            let i = remaining * r;
+            let p = payment - i;
+            interest += i;
+            principal += p;
+            remaining -= p;
+        }
+
+        const row = `<tr>
+            <td>${y}</td>
+            <td>${principal.toFixed(0)}</td>
+            <td>${interest.toFixed(0)}</td>
+            <td>${Math.max(remaining,0).toFixed(0)}</td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+    }
 }
 </script>
 </body>
