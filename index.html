@@ -1,12 +1,12 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quebec Home Finance - Professional Suite</title>
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <!-- REMOVED broken polyfill.io (no longer needed in modern browsers) -->
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -102,10 +102,14 @@
         .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
         .chip .del-btn { font-size: 1.1rem; opacity: 0.6; cursor: pointer; }
 
-        .save-group { display: flex; gap: 5px; margin-left: auto; }
+        .save-group { display: flex; gap: 5px; margin-left: auto; flex-wrap: wrap; }
         .save-input { padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1; }
-        .btn-save { background: var(--success); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; }
-        .btn-clear-all { background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .btn-save, .btn-clear-all {
+            border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600;
+        }
+        .btn-save { background: var(--success); color: white; }
+        .btn-clear-all { background: #ef4444; color: white; }
+        .btn-pdf { background: var(--accent); color: white; border: none; padding: 8px 15px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 10px;}
 
         h1, h2 { margin: 0; font-size: 1.6rem; letter-spacing: -0.5px; }
         .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.2px; color: #94a3b8; margin: 20px 0 10px 0; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
@@ -140,16 +144,7 @@
             margin-bottom: 0;
             padding: 0;
         }
-
-        .page-header h3 {
-            font-size: 1.3rem;
-            margin: 0;
-            color: var(--primary);
-            font-weight: 800;
-            letter-spacing: -1px;
-            line-height: 1;
-            padding: 20px 0;
-        }
+        .page-header h3 { font-size: 1.3rem; margin: 0; color: var(--primary); font-weight: 800; letter-spacing: -1px; padding: 20px 0; }
 
         .toggle-btn {
             background: none;
@@ -158,17 +153,12 @@
             cursor: pointer;
             font-weight: 600;
             font-size: 1rem;
-            padding: 0;
-            margin-left: 10px;
+            transition: transform 0.3s ease;
         }
+        .toggle-btn.rotated { transform: rotate(180deg); }
 
-        .collapsible-content {
-            display: none;
-        }
-
-        .collapsible-content.open {
-            display: block;
-        }
+        .collapsible-content { display: none; }
+        .collapsible-content.open { display: block; }
     </style>
 </head>
 <body>
@@ -237,16 +227,15 @@
         </div>
     </div>
 
-    <div class="card results-box">
+    <div class="card results-box" id="resultsCard">
         <h2 id="resultHeading">Max Purchase</h2>
         <div class="big-number" id="mainResultDisplay">$0</div>
         <div id="limitText" class="limit-indicator"></div>
-        
         <div class="result-item"><span>Monthly Cash Out:</span><span id="monthlyPayment" style="color: #60a5fa; font-weight: 800;">$0</span></div>
         <div class="result-item"><span>Mortgage P+I:</span><span id="piOnly">$0</span></div>
         <div class="result-item"><span>CMHC Insurance:</span><span id="cmhcFee">$0</span></div>
-        <div class="result-item"><span>Total Interest:</span><span id="totalInterest" style="color:#fbbf24;">$0</span></div>
         <div class="result-item"><span>Welcome Tax (Outside MTL):</span><span id="welcomeTax">$0</span></div>
+        <button class="btn-pdf" onclick="exportPDF()">Download PDF</button>
     </div>
 </div>
 
@@ -254,28 +243,26 @@
     <div class="card">
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <h2 style="margin: 0;">Financial Logic & Formulas (2026 Updated)</h2>
-            <button class="toggle-btn" onclick="toggleFormulas()">▼</button>
+            <button class="toggle-btn" onclick="toggleFormulas(this)">▼</button>
         </div>
         <div id="formulasContent" class="collapsible-content">
             <div class="formula-grid">
                 <div class="formula-item">
                     <span class="formula-title">GDS Ratio (Housing Limit)</span>
-                    Max 39% of gross income for housing (Score 680+).
+                    Max 39% of gross income for housing (Score 680+).<br>
                     $$GDS = \frac{Mortgage + Tax + Heat + (0.5 \times Condo)}{Monthly Income}$$
                 </div>
                 <div class="formula-item">
                     <span class="formula-title">TDS Ratio (Debt Limit)</span>
-                    Max 44% of gross income for all debt (Score 680+).
-                    $$TDS = \frac{Housing Costs + Personal Debt}{Monthly Income}$$
+                    Max 44% of gross income for all debt (Score 680+).<br>
+                    $$TDS = \frac{Housing + Debts}{Monthly Income}$$
                 </div>
                 <div class="formula-item">
-                    <span class="formula-title">The Stress Test Rate</span>
-                    Qualifying rate used for calculations.
+                    <span class="formula-title">Stress Test Rate</span>
                     $$i_{stress} = \max(\text{Rate} + 2\%, 5.25\%)$$
                 </div>
                 <div class="formula-item">
-                    <span class="formula-title">Quebec Welcome Tax (2026 Index)</span>
-                    Standard Provincial Brackets (Non-Montreal):
+                    <span class="formula-title">Quebec Welcome Tax (Outside MTL 2026)</span>
                     <table class="welcome-tax-table">
                         <tr><td>First $62,900</td><td>0.5%</td></tr>
                         <tr><td>$62,901 - $315,000</td><td>1.0%</td></tr>
@@ -305,22 +292,25 @@ let currentMode = 'max';
 
 function setMode(mode) {
     currentMode = mode;
-    document.getElementById('modeMax').classList.toggle('active', mode === 'max');
-    document.getElementById('modeSpecific').classList.toggle('active', mode === 'specific');
-    document.getElementById('incomeWrapper').style.display = mode === 'max' ? 'block' : 'none';
+    const maxBtn = document.getElementById('modeMax');
+    const specBtn = document.getElementById('modeSpecific');
+    if (maxBtn) maxBtn.classList.toggle('active', mode === 'max');
+    if (specBtn) specBtn.classList.toggle('active', mode === 'specific');
+    
+    document.getElementById('incomeWrapper').style.display = 'block';
     document.getElementById('priceWrapper').style.display = mode === 'specific' ? 'block' : 'none';
     document.getElementById('resultHeading').innerText = mode === 'max' ? 'Max Purchase' : 'Purchase Price';
     calculate();
 }
 
 function minDownPayment(price) {
-    if (price >= 1000000) return price * 0.20;
+    if (price >= 1500000) return price * 0.20;
     if (price <= 500000) return price * 0.05;
     return (500000 * 0.05) + ((price - 500000) * 0.10);
 }
 
 function cmhcRate(dpPct, price) {
-    if (price >= 1000000 || dpPct >= 20) return 0;
+    if (price >= 1500000 || dpPct >= 20) return 0;
     if (dpPct >= 15) return 0.028;
     if (dpPct >= 10) return 0.031;
     if (dpPct >= 5) return 0.04;
@@ -335,13 +325,27 @@ function paymentFromMortgage(mortgage, r, n) {
     return mortgage * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
 }
 
-// PATCH: Correct QC welcome tax (3% top bracket)
 function welcomeTaxOutsideMTL(price) {
     const t1 = 62900, t2 = 315000, t3 = 552300;
     if (price <= t1) return price * 0.005;
     if (price <= t2) return (t1 * 0.005) + (price - t1) * 0.01;
     if (price <= t3) return (t1 * 0.005) + (t2 - t1) * 0.01 + (price - t2) * 0.015;
     return (t1 * 0.005) + (t2 - t1) * 0.01 + (t3 - t2) * 0.015 + (price - t3) * 0.03;
+}
+
+function saveScenario() {
+    const name = (document.getElementById('scenarioName').value || 'Untitled').trim();
+    if (!name) return;
+    const chip = document.createElement('div');
+    chip.className = 'chip active';
+    chip.innerHTML = `${name} <span class="del-btn" onclick="this.parentElement.remove()">×</span>`;
+    document.getElementById('scenarioList').appendChild(chip);
+}
+
+function clearAllScenarios() {
+    if (confirm('Clear all saved scenarios?')) {
+        document.getElementById('scenarioList').innerHTML = '';
+    }
 }
 
 function calculate() {
@@ -361,83 +365,102 @@ function calculate() {
     const n = years * 12;
 
     const GDS = 0.39, TDS = 0.44;
+    const monthlyIncome = income / 12 || 1;
+    const fixedHousing = (annualTax / 12) + heat + (condo * 0.5);
+    let maxGDS = monthlyIncome * GDS - fixedHousing;
+    let maxTDS = monthlyIncome * TDS - fixedHousing - debts;
+    let maxPayment = Math.min(maxGDS, maxTDS);
+    if (maxPayment < 0) maxPayment = 0;
 
     let price = 0, baseLoan = 0, insuredMortgage = 0, cmhcTotal = 0;
 
-    const fixedHousing = (annualTax / 12) + heat + (condo * 0.5);
-    const maxGDS = (income * GDS / 12) - fixedHousing;
-    const maxTDS = (income * TDS / 12) - fixedHousing - debts;
-    const maxPayment = Math.min(maxGDS, maxTDS);
-
     if (currentMode === 'max') {
-        if (maxPayment <= 0) return;
+        if (income <= 0) {
+            resetResults();
+            return;
+        }
 
         let loanGuess = mortgageFromPayment(maxPayment, rStress, n);
         price = loanGuess + downPayment;
 
-        for (let i = 0; i < 10; i++) {
-            if (downPayment < minDownPayment(price)) {
-                price = downPayment / 0.05;
-            }
-
+        for (let i = 0; i < 20; i++) {
             let dpPct = (downPayment / price) * 100;
             let rate = cmhcRate(dpPct, price);
             baseLoan = price - downPayment;
-            cmhcTotal = baseLoan * rate * 1.09975; // PATCH: QC tax
+            cmhcTotal = baseLoan * rate * 1.09975;
             insuredMortgage = baseLoan + cmhcTotal;
-
             let req = paymentFromMortgage(insuredMortgage, rStress, n);
-            price *= maxPayment / req;
-        }
-    } else {
-        price = priceInput;
-
-        if (downPayment < minDownPayment(price)) {
-            alert("Down payment below legal minimum.");
+            price = Math.max(50000, price * (maxPayment / req));
         }
 
-        if (downPayment / price < 0.20 && years > 25) {
+        // Final precise values
+        let dpPct = (downPayment / price) * 100;
+        let rate = cmhcRate(dpPct, price);
+        baseLoan = price - downPayment;
+        cmhcTotal = baseLoan * rate * 1.09975;
+        insuredMortgage = baseLoan + cmhcTotal;
+
+        if (dpPct < 20 && years > 25) {
             years = 25;
             document.getElementById('amortization').value = "25";
         }
 
-        baseLoan = price - downPayment;
+        const minDPNeeded = minDownPayment(price);
+        document.getElementById('limitText').innerText = downPayment < minDPNeeded 
+            ? `✗ INSUFFICIENT DOWN PAYMENT! MIN REQUIRED: $${Math.round(minDPNeeded).toLocaleString()}` 
+            : "";
+    } else {
+        price = priceInput || 0;
+        if (price <= 0) {
+            resetResults();
+            return;
+        }
+        // ... (same as before)
+        const minDPNeeded = minDownPayment(price);
+        if (downPayment < minDPNeeded) alert(`Down payment below legal minimum ($${Math.round(minDPNeeded).toLocaleString()})`);
+        if ((downPayment / price) < 0.20 && years > 25) {
+            years = 25;
+            document.getElementById('amortization').value = "25";
+        }
         let dpPct = (downPayment / price) * 100;
         let rate = cmhcRate(dpPct, price);
+        baseLoan = price - downPayment;
         cmhcTotal = baseLoan * rate * 1.09975;
         insuredMortgage = baseLoan + cmhcTotal;
 
-        // PATCH: Stress-test validation
         const stressPI = paymentFromMortgage(insuredMortgage, rStress, years * 12);
-        const gds = (stressPI + fixedHousing) / (income / 12);
-        const tds = (stressPI + fixedHousing + debts) / (income / 12);
-
-        document.getElementById('limitText').innerText =
-            gds <= GDS && tds <= TDS ? "✓ QUALIFIES (STRESS TEST)" : "✗ DOES NOT QUALIFY";
+        const gds = (stressPI + fixedHousing) / monthlyIncome;
+        const tds = (stressPI + fixedHousing + debts) / monthlyIncome;
+        document.getElementById('limitText').innerText = (gds <= GDS && tds <= TDS) ? "✓ QUALIFIES (STRESS TEST)" : "✗ DOES NOT QUALIFY";
     }
 
     const monthlyPI = paymentFromMortgage(insuredMortgage, rMarket, years * 12);
     const welcomeTax = welcomeTaxOutsideMTL(price);
-
     const fmt = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 });
 
     document.getElementById('mainResultDisplay').innerText = fmt.format(price);
-    document.getElementById('monthlyPayment').innerText =
-        fmt.format(monthlyPI + (annualTax / 12) + heat + condo);
+    document.getElementById('monthlyPayment').innerText = fmt.format(monthlyPI + (annualTax / 12) + heat + condo);
     document.getElementById('piOnly').innerText = fmt.format(monthlyPI);
     document.getElementById('cmhcFee').innerText = fmt.format(cmhcTotal);
     document.getElementById('welcomeTax').innerText = fmt.format(welcomeTax);
-
     generateTable(insuredMortgage, marketRate, years, monthlyPI);
 }
 
-// PATCH: Amortization table renderer
+function resetResults() {
+    const fmt = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 });
+    document.getElementById('mainResultDisplay').innerText = '$0';
+    document.getElementById('monthlyPayment').innerText = '$0';
+    document.getElementById('piOnly').innerText = '$0';
+    document.getElementById('cmhcFee').innerText = '$0';
+    document.getElementById('welcomeTax').innerText = '$0';
+    document.getElementById('limitText').innerText = '';
+}
+
 function generateTable(balance, rate, years, payment) {
     const tbody = document.getElementById('amortizationTableBody');
     tbody.innerHTML = "";
     let r = rate / 12;
     let remaining = balance;
-
     for (let y = 1; y <= years; y++) {
         let interest = 0, principal = 0;
         for (let m = 0; m < 12; m++) {
@@ -446,17 +469,39 @@ function generateTable(balance, rate, years, payment) {
             interest += i;
             principal += p;
             remaining -= p;
+            if (remaining < 0) remaining = 0;
         }
-
-        const row = `<tr>
-            <td>${y}</td>
-            <td>${principal.toFixed(0)}</td>
-            <td>${interest.toFixed(0)}</td>
-            <td>${Math.max(remaining,0).toFixed(0)}</td>
-        </tr>`;
+        const row = `<tr><td>${y}</td><td>${Math.round(principal)}</td><td>${Math.round(interest)}</td><td>${Math.round(remaining)}</td></tr>`;
         tbody.insertAdjacentHTML('beforeend', row);
     }
 }
+
+function toggleFormulas(btn) {
+    const section = document.getElementById('formulasContent');
+    const willOpen = !section.classList.contains('open');
+    section.classList.toggle('open');
+    btn.classList.toggle('rotated');
+    if (willOpen && typeof MathJax !== 'undefined') MathJax.typesetPromise().catch(() => {});
+}
+
+function exportPDF() {
+    const element = document.getElementById('resultsCard');
+    const opt = {
+        margin: 0.5,
+        filename: 'Quebec_Home_Finance_Report.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
+}
+
+// Safe initialization (prevents any null errors even if DOM is slightly delayed)
+window.onload = () => {
+    setMode('max');
+    calculate();
+};
 </script>
+
 </body>
 </html>
