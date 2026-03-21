@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quebec Home Finance - Professional Suite</title>
-    <!-- REMOVED broken polyfill.io (no longer needed in modern browsers) -->
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
@@ -296,7 +295,6 @@ function setMode(mode) {
     const specBtn = document.getElementById('modeSpecific');
     if (maxBtn) maxBtn.classList.toggle('active', mode === 'max');
     if (specBtn) specBtn.classList.toggle('active', mode === 'specific');
-    
     document.getElementById('incomeWrapper').style.display = 'block';
     document.getElementById('priceWrapper').style.display = mode === 'specific' ? 'block' : 'none';
     document.getElementById('resultHeading').innerText = mode === 'max' ? 'Max Purchase' : 'Purchase Price';
@@ -373,6 +371,7 @@ function calculate() {
     if (maxPayment < 0) maxPayment = 0;
 
     let price = 0, baseLoan = 0, insuredMortgage = 0, cmhcTotal = 0;
+    let limitMsg = "";
 
     if (currentMode === 'max') {
         if (income <= 0) {
@@ -393,7 +392,6 @@ function calculate() {
             price = Math.max(50000, price * (maxPayment / req));
         }
 
-        // Final precise values
         let dpPct = (downPayment / price) * 100;
         let rate = cmhcRate(dpPct, price);
         baseLoan = price - downPayment;
@@ -406,8 +404,8 @@ function calculate() {
         }
 
         const minDPNeeded = minDownPayment(price);
-        document.getElementById('limitText').innerText = downPayment < minDPNeeded 
-            ? `✗ INSUFFICIENT DOWN PAYMENT! MIN REQUIRED: $${Math.round(minDPNeeded).toLocaleString()}` 
+        limitMsg = downPayment < minDPNeeded 
+            ? `✗ Down payment below legal minimum! Min required: $${Math.round(minDPNeeded).toLocaleString()}` 
             : "";
     } else {
         price = priceInput || 0;
@@ -415,23 +413,35 @@ function calculate() {
             resetResults();
             return;
         }
-        // ... (same as before)
+
         const minDPNeeded = minDownPayment(price);
-        if (downPayment < minDPNeeded) alert(`Down payment below legal minimum ($${Math.round(minDPNeeded).toLocaleString()})`);
-        if ((downPayment / price) < 0.20 && years > 25) {
-            years = 25;
-            document.getElementById('amortization').value = "25";
+        if (downPayment < minDPNeeded) {
+            limitMsg = `✗ Down payment below legal minimum! Min required: $${Math.round(minDPNeeded).toLocaleString()}`;
+        } else {
+            if ((downPayment / price) < 0.20 && years > 25) {
+                years = 25;
+                document.getElementById('amortization').value = "25";
+            }
+            let dpPct = (downPayment / price) * 100;
+            let rate = cmhcRate(dpPct, price);
+            baseLoan = price - downPayment;
+            cmhcTotal = baseLoan * rate * 1.09975;
+            insuredMortgage = baseLoan + cmhcTotal;
+
+            const stressPI = paymentFromMortgage(insuredMortgage, rStress, years * 12);
+            const gds = (stressPI + fixedHousing) / monthlyIncome;
+            const tds = (stressPI + fixedHousing + debts) / monthlyIncome;
+            limitMsg = (gds <= GDS && tds <= TDS) ? "✓ QUALIFIES (STRESS TEST)" : "✗ DOES NOT QUALIFY";
         }
+    }
+
+    // Final calculations (always run)
+    if (price > 0) {
         let dpPct = (downPayment / price) * 100;
         let rate = cmhcRate(dpPct, price);
         baseLoan = price - downPayment;
         cmhcTotal = baseLoan * rate * 1.09975;
         insuredMortgage = baseLoan + cmhcTotal;
-
-        const stressPI = paymentFromMortgage(insuredMortgage, rStress, years * 12);
-        const gds = (stressPI + fixedHousing) / monthlyIncome;
-        const tds = (stressPI + fixedHousing + debts) / monthlyIncome;
-        document.getElementById('limitText').innerText = (gds <= GDS && tds <= TDS) ? "✓ QUALIFIES (STRESS TEST)" : "✗ DOES NOT QUALIFY";
     }
 
     const monthlyPI = paymentFromMortgage(insuredMortgage, rMarket, years * 12);
@@ -443,6 +453,8 @@ function calculate() {
     document.getElementById('piOnly').innerText = fmt.format(monthlyPI);
     document.getElementById('cmhcFee').innerText = fmt.format(cmhcTotal);
     document.getElementById('welcomeTax').innerText = fmt.format(welcomeTax);
+    document.getElementById('limitText').innerText = limitMsg;   // ← message now appears here (on top of results)
+
     generateTable(insuredMortgage, marketRate, years, monthlyPI);
 }
 
@@ -496,7 +508,7 @@ function exportPDF() {
     html2pdf().set(opt).from(element).save();
 }
 
-// Safe initialization (prevents any null errors even if DOM is slightly delayed)
+// Initialize
 window.onload = () => {
     setMode('max');
     calculate();
